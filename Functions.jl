@@ -682,43 +682,49 @@ function calculate_routing_prob_and_server_speeds(x_start_dif, N, ϵ, δ, apps_s
   x_start = [x_mins[j] + x_start_dif for j in 1:J]
   println("x starts with : ", x_start)
 
-  # x (variable)
+  # p (variable) (implies Constraint B.1)
+  @variable(m, p[i in 1:I, j in feas_apps[i]] >= 0, start = p_start[i])
+  # Constraint B.2
+  @constraint(m, prob_sum[i = 1:I], sum(p[i,j] for j in feas_apps[i]) == 1)
+  
+  # x (variable) (implies Constraint B.3)
   @variable(m, x[j = 1:J] >= x_mins[j], start = x_start[j])
 
-  #p (variable)
-  @variable(m, p[i in 1:I, j in feas_apps[i]] >= 0, start = p_start[i])
-  @constraint(m, prob_sum[i = 1:I], sum(p[i,j] for j in feas_apps[i]) == 1)
-
-  #λ (variable)
+  # λ (variable)
   λ_start = [sum(λₒ[i]*p_start[i] for i in feas_servs[j]) for j in 1:J]
   println("λ starts with ", λ_start)
   @variable(m, λ[j = 1:J], start = λ_start[j])
+  # Constraint B.4
   @constraint(m, λ_con[j = 1:J], λ[j] == sum(λₒ[i]*p[i, j] for i in feas_servs[j]))
 
-  #σₐ (variable)
+  # σₐ (variable)
   σₐ_start = [sqrt(sum(p_start[i]*SCOVₐₒ[i] + (1-p_start[i]) for i in feas_servs[j]))/(λ_start[j]) for j in 1:J]
   println("σₐ starts with : ", σₐ_start)
   @variable(m, σₐ[j = 1:J] >= 0, start = σₐ_start[j])
+  # Constraint B.5
   @NLconstraint(m, σₐ_con[j = 1:J], (λ[j]*σₐ[j])^2 == sum(p[i,j]*SCOVₐₒ[i] + (1-p[i,j]) for i in feas_servs[j]))
 
-  #ρ (expression)
+  # 1/μ (variable)
   μ_inv_start = [sum(μₒ_inv[i]*λₒ[i]*p_start[i] for i in feas_servs[j])/(x_start[j]*λ_start[j]) for j in 1:J]
   println("1/μ starts with ", μ_inv_start)
   @variable(m, μ_inv[j = 1:J], start = μ_inv_start[j])
+  # Constraint B.6
   @NLconstraint(m, μ_inv_con[j = 1:J], μ_inv[j]*x[j]*λ[j] == sum(μₒ_inv[i]*λₒ[i]*p[i,j] for i in feas_servs[j]))
 
-  #σₛ (variable)
+  # σₛ (variable)
   σₛ_start = [(sqrt(sum(λₒ[i]*p_start[i]*(σₛₒ[i]^2 + (μₒ_inv[i]^2)) for i in feas_servs[j])/λ_start[j] - (sum(λₒ[i]*p_start[i]*μₒ_inv[i] for i in feas_servs[j])/λ_start[j])^2))/x_start[j] for j in 1:J]
   println("σₛ starts with : ", σₛ_start)
   @variable(m, σₛ[j = 1:J] >= 0, start = σₛ_start[j])
+  # Constraint B.7
   @NLconstraint(m, σₛ_con[j = 1:J], (λ[j]*x[j]*σₛ[j])^2 == λ[j]*sum(λₒ[i]*p[i,j]*(σₛₒ[i]^2 + (μₒ_inv[i]^2)) for i in feas_servs[j]) - sum(λₒ[i]*p[i,j]*μₒ_inv[i] for i in feas_servs[j])^2 )
 
-  #σₛ² + x²σₐ² (expression)
+  # √(σₛ² + x²σₐ²) (variable)
   sqrt_σₛ²_plus_σₐ²_start = [sqrt(σₛ_start[j]^2 + σₐ_start[j]^2) for j in 1:J]
   println("√(σₛ²+σₐ²) starts with : ", sqrt_σₛ²_plus_σₐ²_start)
   @variable(m, sqrt_σₛ²_plus_σₐ²[j = 1:J] >= 0, start = sqrt_σₛ²_plus_σₐ²_start[j])
   @NLconstraint(m, sqrt_σₛ²_plus_σₐ²_con[j = 1:J], sqrt_σₛ²_plus_σₐ²[j]^2 == σₛ[j]^2 + σₐ[j]^2)
 
+  # Φₐₚₚᵣₒₓ (user-defined function)
   function Φ(x)
       sgn = tanh(100000*x)
       ind = (sgn+1)/2
@@ -734,26 +740,39 @@ function calculate_routing_prob_and_server_speeds(x_start_dif, N, ϵ, δ, apps_s
 
   register(m, :Φ, 1, Φ; autodiff = true)
 
-  @variable(m, γ_uc_r_a[n = 1:N, k = 1:n, j = 1:J])
-  @variable(m, γ_uc_r_s[n = 1:N, k = 1:n, j = 1:J])
-  @NLconstraint(m, γ_uc_r_con[n = 1:N, k = 1:n, j = 1:J], n*μ_inv[j] - (k-1)/λ[j] + γ_uc_r_s[n,k,j]*σₛ[j]*sqrt(n) + γ_uc_r_a[n,k,j]*σₐ[j]*sqrt(k-1) == δ)
+  # Pᴮᴸ (variable)
+  @variable(m, P_L[n = 1:N, j = 1:J])
+  # Constraint B.9
+  @NLconstraint(m, P_L_con[j = 1:J], P_L[1, j] == Φ((1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]))
+  # Constraint B.10
+  @NLconstraint(m, P_L_con2[n = 2:N, j = 1:J], P_L[n, j] == Φ(sqrt(n)*(1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]) - Φ(sqrt(n-1)*(1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]))
 
+  # γ^qₐ, γ^qₛ (variable)
   @variable(m, γ_uc_q_a[j = 1:J])
   @variable(m, γ_uc_q_s[j = 1:J])
+  # Constraint B.12
   @NLconstraint(m, γ_uc_q_con[j = 1:J], (γ_uc_q_a[j]*σₐ[j] + γ_uc_q_s[j]*σₛ[j])^2 == 2*(1/λ[j] - μ_inv[j])*(δ - 2/λ[j] + μ_inv[j]))
 
-  @variable(m, r[n = 1:N, k = 1:n, j = 1:J])
-  @NLconstraint(m, r_con[n = 1:N, k = 1:n, j = 1:J], Φ(γ_uc_r_a[n, k, j])*Φ(γ_uc_r_s[n, k, j]) == 1 - r[n, k, j])
-
+  # q (variable)
   @variable(m, q[j = 1:J])
+  # Constraint B.11
   @NLconstraint(m, q_con[j = 1:J], Φ(γ_uc_q_a[j])*Φ(γ_uc_q_s[j]) == 1 - q[j])
 
-  @variable(m, p_bl[n = 1:N, j = 1:J])
-  @NLconstraint(m, p_bl_con[j = 1:J], p_bl[1, j] == Φ((1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]))
-  @NLconstraint(m, p_bl_con2[n = 2:N, j = 1:J], p_bl[n, j] == Φ(sqrt(n)*(1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]) - Φ(sqrt(n-1)*(1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]))
+  # γʳₐ, γʳₛ (variable)
+  @variable(m, γ_uc_r_a[n = 1:N, k = 1:n, j = 1:J])
+  @variable(m, γ_uc_r_s[n = 1:N, k = 1:n, j = 1:J])
+  # Constraint B.14
+  @NLconstraint(m, γ_uc_r_con[n = 1:N, k = 1:n, j = 1:J], n*μ_inv[j] - (k-1)/λ[j] + γ_uc_r_s[n,k,j]*σₛ[j]*sqrt(n) + γ_uc_r_a[n,k,j]*σₐ[j]*sqrt(k-1) == δ)
 
-  @NLconstraint(m, SLA[j = 1:J], sum((p_bl[n, j]/n) * sum(r[n, k, j] for k in 1:n) for n in 1:N) + q[j]*(1-sum(p_bl[n, j] for n in 1:N)) <= ϵ)
+  # r (variable)
+  @variable(m, r[n = 1:N, k = 1:n, j = 1:J])
+  # Constraint B.13
+  @NLconstraint(m, r_con[n = 1:N, k = 1:n, j = 1:J], Φ(γ_uc_r_a[n, k, j])*Φ(γ_uc_r_s[n, k, j]) == 1 - r[n, k, j])
 
+  # Constraint B.8
+  @NLconstraint(m, QoS[j = 1:J], sum((P_L[n, j]/n) * sum(r[n, k, j] for k in 1:n) for n in 1:N) + q[j]*(1-sum(P_L[n, j] for n in 1:N)) <= ϵ)
+
+  # Objective
   @NLobjective(m, Min, sum(λ[j]*μ_inv[j]*α[j]*(x[j]^3 - x_mins[j]^3) + K[j] + α[j]*(x_mins[j]^3) for j in 1:J))
 
   JuMP.optimize!(m)
@@ -795,7 +814,7 @@ function calculate_dynamic_results(threshold, quantile_percentage, apps_server_i
   println(file_summarization, "P[W_$j>=δ_$j]: $(sum(PI.sojourn_time_violation_array[j])/length(PI.sojourn_time_array[j]))")
   end
   println(file_summarization, " ")
-  average_speeds = [sum([PI.speed_array[j][i]*(PI.time_array[i+1]-PI.time_array[i]) for i in 1:length(PI.time_array)-1])/PI.time_array[end] for j in 1:10]
+  average_speeds = [sum([PI.speed_array[j][i]*(PI.time_array[i+1]-PI.time_array[i]) for i in 1:length(PI.time_array)-1])/PI.time_array[end] for j in 1:length(S)]
   for j in 1:length(S)
   println(file_summarization, "Average Speed of Server $j: $(average_speeds[j])")
   end
@@ -840,7 +859,7 @@ function calculate_static_results(threshold, quantile_percentage, routing_prob, 
     println(file_summarization, "P[W_$j>=δ_$j]: $(sum(PI.sojourn_time_violation_array[j])/length(PI.sojourn_time_array[j]))")
   end
   println(file_summarization, " ")
-  average_speeds = [sum([PI.speed_array[j][i]*(PI.time_array[i+1]-PI.time_array[i]) for i in 1:length(PI.time_array)-1])/PI.time_array[end] for j in 1:10]
+  average_speeds = [sum([PI.speed_array[j][i]*(PI.time_array[i+1]-PI.time_array[i]) for i in 1:length(PI.time_array)-1])/PI.time_array[end] for j in 1:length(S)]
   for j in 1:length(S)
     println(file_summarization, "Average Speed of Server $j: $(average_speeds[j])")
   end

@@ -23,11 +23,11 @@ K, α = [150, 250, 220, 150, 300, 350, 220, 350, 400, 700], [1/3, 1/5, 1, 2/3, 0
 x_mins, x_maxs = [5, 7, 6, 5, 7, 8, 6, 7, 8, 10], [100, 102, 99, 105, 100, 102, 100, 105, 102, 105]
 
 #Parameters for Simulation
-const MAX_ARRIVALS = 100000
-const WARM_UP_ARRIVALS = 50000
-const REPLICATION_TIME = 30000.0
+const MAX_ARRIVALS = 200000
+const WARM_UP_ARRIVALS = 40000
+const REPLICATION_TIME = 100000.0
 const WARM_UP_TIME = 0.2*REPLICATION_TIME
-const REGULAR_UPDATE_INTERVAL = 0.1
+const REGULAR_UPDATE_INTERVAL = 0.05
 
 apps_server_info_setting_5apps_10servers = Apps_Server_Info_Setting(I, feas_servs, J, feas_apps, λₒ, SCOVₐₒ, σₐₒ, μₒ_inv, SCOVₛₒ, σₛₒ, inter_arrival_distributions, workload_distributions, ωₒ)
 power_info_setting_5apps_10servers = Power_Info_Setting(K, α, x_mins, x_maxs)
@@ -36,7 +36,7 @@ power_info_setting_5apps_10servers = Power_Info_Setting(K, α, x_mins, x_maxs)
 ε, δ = 0.05, 5
 
 #Parameters for Optimization Solving 
-x_start_dif, N = 5, 10
+x_start_dif, N = 10, 10
 
 #Solve optimization problem and obtain solution
 result = calculate_routing_prob_and_server_speeds(x_start_dif, N, ε, δ, apps_server_info_setting_5apps_10servers, power_info_setting_5apps_10servers)
