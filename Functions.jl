@@ -73,7 +73,7 @@ end
 #Each functions has two different versions - Dynamic & Static
 
 #Functions making an movement between current time to next event
-function next_event_dynamic(vdc::VirtualDataCenter, PI::Plot_Information)
+function next_event_dynamic(vdc::VirtualDataCenter, PI::Plot_Information, bool_write_txt = false)
   if vdc.next_regular_update == min(vdc.next_regular_update, vdc.next_arrival, vdc.next_completion)
     #If next update is regular update
     push!(PI.time_array, vdc.current_time) # Record the Update Time
@@ -141,7 +141,9 @@ function next_event_dynamic(vdc::VirtualDataCenter, PI::Plot_Information)
     #If next update is due to arrival
     inter_event_time = vdc.next_arrival - vdc.current_time   # Save the Inter-Event Time
     vdc.current_time = vdc.next_arrival                      # Change the current time of Simulator
-    println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: New arrival ($(vdc.AI[1].arrival_index)th arrival, app_type: $(vdc.AI[1].app_type), workload: $(vdc.AI[1].remaining_workload), server_dispatched: $(find_min_price_server(vdc.AI[1].app_type, vdc.SS, vdc.S))")
+    if bool_write_txt
+      println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: New arrival ($(vdc.AI[1].arrival_index)th arrival, app_type: $(vdc.AI[1].app_type), workload: $(vdc.AI[1].remaining_workload), server_dispatched: $(find_min_price_server(vdc.AI[1].app_type, vdc.SS, vdc.S))")
+    end
 
     # Routing job and Workload increment based on the type of job and current prices of servers 
     server_index = find_min_price_server(vdc.AI[1].app_type, vdc.SS, vdc.S)    
@@ -197,7 +199,9 @@ function next_event_dynamic(vdc::VirtualDataCenter, PI::Plot_Information)
     WIP_index = vdc.next_completion_info["WIP_num"]
     inter_event_time = vdc.next_completion - vdc.current_time
     vdc.current_time = vdc.next_completion
-    println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: Completion ($(vdc.passed_arrivals+1)th, server: $server_index , server $server_index's remaining WIPs: $(length(vdc.S[server_index].WIP))")
+    if bool_write_txt
+      println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: Completion ($(vdc.passed_arrivals+1)th, server: $server_index , server $server_index's remaining WIPs: $(length(vdc.S[server_index].WIP))")
+    end
 
     # for summarizing
     if vdc.warmed_up == true
@@ -262,7 +266,7 @@ function next_event_dynamic(vdc::VirtualDataCenter, PI::Plot_Information)
   end
 end
 
-function next_event_static(vdc::VirtualDataCenter, PI::Plot_Information, routing_prob::Dict{Any, Any}, ro_server_speeds::Array{Float64}, feas_apps::Array{Array{Int64}})
+function next_event_static(vdc::VirtualDataCenter, PI::Plot_Information, routing_prob::Dict{Any, Any}, ro_server_speeds::Array{Float64}, feas_apps::Array{Array{Int64}}, bool_write_txt = false)
   if vdc.next_regular_update == min(vdc.next_regular_update, vdc.next_arrival, vdc.next_completion)
     #If next update is regular update
     push!(PI.time_array, vdc.current_time) # Record the Update Time
@@ -331,7 +335,9 @@ function next_event_static(vdc::VirtualDataCenter, PI::Plot_Information, routing
     
     #Find server to be routed by probabilistic law
     server_index = find_prob_server(vdc.AI[1].app_type, routing_prob, feas_apps)
-    println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: New arrival ($(vdc.AI[1].arrival_index)th arrival, app_type: $(vdc.AI[1].app_type), workload: $(vdc.AI[1].remaining_workload), server_dispatched: $(server_index)")
+    if bool_write_txt
+      println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: New arrival ($(vdc.AI[1].arrival_index)th arrival, app_type: $(vdc.AI[1].app_type), workload: $(vdc.AI[1].remaining_workload), server_dispatched: $(server_index)")
+    end
 
     # Routing job and Workload increment based on the type of job and current prices of servers 
     vdc.S[server_index].previous_remaining_workload = vdc.S[server_index].current_remaining_workload  # Save previous remaining workload
@@ -387,7 +393,9 @@ function next_event_static(vdc::VirtualDataCenter, PI::Plot_Information, routing
     WIP_index = vdc.next_completion_info["WIP_num"]
     inter_event_time = vdc.next_completion - vdc.current_time
     vdc.current_time = vdc.next_completion
-    println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: Completion ($(vdc.passed_arrivals+1)th, server: $server_index , server $server_index's remaining WIPs: $(length(vdc.S[server_index].WIP))")
+    if bool_write_txt
+      println(PI.file_sim_record,"(Time: $(vdc.current_time)) Current event: Completion ($(vdc.passed_arrivals+1)th, server: $server_index , server $server_index's remaining WIPs: $(length(vdc.S[server_index].WIP))")
+    end
 
     # for summarizing
     if vdc.warmed_up == true
@@ -452,22 +460,27 @@ function next_event_static(vdc::VirtualDataCenter, PI::Plot_Information, routing
   end
 end
 
-
 #Functions for doing a warm-up stage
-function warm_up_dynamic(vdc::VirtualDataCenter, PI::Plot_Information, WARM_UP_TIME::Float64)
-  println(PI.file_sim_record, "Warming up for $(WARM_UP_TIME) times.")
+function warm_up_dynamic(vdc::VirtualDataCenter, PI::Plot_Information, WARM_UP_TIME::Float64, bool_write_txt = false)
+  if bool_write_txt
+    println(PI.file_sim_record, "Warming up for $(WARM_UP_TIME) times.")
+  end
   print("Doing a Warm up ")
   #j = 0
   while vdc.current_time < WARM_UP_TIME
     #Making a progress through an event
-    next_event_dynamic(vdc, PI)
+    next_event_dynamic(vdc, PI, bool_write_txt)
   end
   vdc.warmed_up = true
-  println(PI.file_sim_record, "Warmed up.")
+  if bool_write_txt
+    println(PI.file_sim_record, "Warmed up.")
+  end
 end
 
-function warm_up_static(vdc::VirtualDataCenter, PI::Plot_Information, WARM_UP_TIME::Float64, routing_prob::Dict{Any, Any}, ro_server_speeds::Array{Float64}, feas_apps::Array{Array{Int64}})
-  println(PI.file_sim_record, "Warming up for $(WARM_UP_TIME) times.")
+function warm_up_static(vdc::VirtualDataCenter, PI::Plot_Information, WARM_UP_TIME::Float64, routing_prob::Dict{Any, Any}, ro_server_speeds::Array{Float64}, feas_apps::Array{Array{Int64}}, bool_write_txt = false)
+  if bool_write_txt
+    println(PI.file_sim_record, "Warming up for $(WARM_UP_TIME) times.")
+  end
   print("Doing a Warm up ")
   #j = 0
   while vdc.current_time < WARM_UP_TIME
@@ -475,46 +488,52 @@ function warm_up_static(vdc::VirtualDataCenter, PI::Plot_Information, WARM_UP_TI
     #Making a progress through an event
   end
   vdc.warmed_up = true
-  println(PI.file_sim_record, "Warmed up.")
+  if bool_write_txt
+    println(PI.file_sim_record, "Warmed up.")
+  end
 end
 
 #Functions to run the whole simulation
-function run_to_end_dynamic(vdc::VirtualDataCenter, PI::Plot_Information, REPLICATION_TIME::Float64, WARM_UP_TIME::Float64)
+function run_to_end_dynamic(vdc::VirtualDataCenter, PI::Plot_Information, REPLICATION_TIME::Float64, WARM_UP_TIME::Float64, bool_write_txt = false)
   if !vdc.warmed_up
     #Doing the Warm up
-    warm_up_dynamic(vdc,PI,WARM_UP_TIME) 
+    warm_up_dynamic(vdc,PI,WARM_UP_TIME, bool_write_txt) 
   end
   println("-- Warm up Over ")
   i = 0
   while vdc.current_time < REPLICATION_TIME
     #Making a progress through an event
-    next_event_dynamic(vdc, PI)
+    next_event_dynamic(vdc, PI, bool_write_txt)
     i += 1
     if i % 300000 == 1
       #Checking a time
       println("Running at : ", vdc.current_time)
     end
   end
-  println(PI.file_sim_record, "Simulation finished")
+  if bool_write_txt
+    println(PI.file_sim_record, "Simulation finished")
+  end
 end
 
-function run_to_end_static(vdc::VirtualDataCenter, PI::Plot_Information, REPLICATION_TIME::Float64, WARM_UP_TIME::Float64, routing_prob::Dict{Any, Any}, ro_server_speeds::Array{Float64}, feas_apps::Array{Array{Int64}})
+function run_to_end_static(vdc::VirtualDataCenter, PI::Plot_Information, REPLICATION_TIME::Float64, WARM_UP_TIME::Float64, routing_prob::Dict{Any, Any}, ro_server_speeds::Array{Float64}, feas_apps::Array{Array{Int64}}, bool_write_txt = false)
   if !vdc.warmed_up
     #Doing the Warm up
-    warm_up_static(vdc,PI,WARM_UP_TIME, routing_prob, ro_server_speeds, feas_apps)
+    warm_up_static(vdc,PI,WARM_UP_TIME, routing_prob, ro_server_speeds, feas_apps, bool_write_txt)
   end
   println("-- Warm up Over ")
   i = 0
   while vdc.current_time < REPLICATION_TIME
     #Making a progress through an event
-    next_event_static(vdc, PI, routing_prob, ro_server_speeds, feas_apps)
+    next_event_static(vdc, PI, routing_prob, ro_server_speeds, feas_apps, bool_write_txt)
     i += 1
     if i % 300000 == 1
       #Checking a time
       println("Running at : ", vdc.current_time)
     end
   end
-  println(PI.file_sim_record, "Simulation finished")
+  if bool_write_txt
+    println(PI.file_sim_record, "Simulation finished")
+  end
 end
 
 #############################Some Additional Functions###########################
@@ -652,146 +671,121 @@ end
 #################Solving an Optimization problem#################
 
 #Calculate Routing Probability and Server Speeds (Static Control)
-function calculate_routing_prob_and_server_speeds(x_start_dif, N, ϵ, δ, apps_server_info_setting, power_info_setting)
-  I = apps_server_info_setting.I
-  feas_servs = apps_server_info_setting.feas_servs
-  J = apps_server_info_setting.J
-  feas_apps = apps_server_info_setting.feas_apps
+function calculate_routing_prob_and_server_speeds(x_start_dif, θ, δ, apps_server_info_setting, power_info_setting)
+    I = apps_server_info_setting.I
+    feas_servs = apps_server_info_setting.feas_servs
+    J = apps_server_info_setting.J
+    feas_apps = apps_server_info_setting.feas_apps
 
-  λₒ = apps_server_info_setting.λₒ
-  SCOVₐₒ = apps_server_info_setting.SCOVₐₒ
-  σₐₒ = apps_server_info_setting.σₐₒ
-  μₒ_inv = apps_server_info_setting.μₒ_inv
-  SCOVₛₒ = apps_server_info_setting.SCOVₛₒ
-  σₛₒ = apps_server_info_setting.σₛₒ
-  inter_arrival_distributions = apps_server_info_setting.inter_arrival_distributions
-  workload_distributions = apps_server_info_setting.workload_distributions
-  ωₒ = apps_server_info_setting.ωₒ
+    λₒ = apps_server_info_setting.λₒ
+    SCOVₐₒ = apps_server_info_setting.SCOVₐₒ
+    σₐₒ = apps_server_info_setting.σₐₒ
+    μₒ_inv = apps_server_info_setting.μₒ_inv
+    SCOVₛₒ = apps_server_info_setting.SCOVₛₒ
+    σₛₒ = apps_server_info_setting.σₛₒ
+    inter_arrival_distributions = apps_server_info_setting.inter_arrival_distributions
+    workload_distributions = apps_server_info_setting.workload_distributions
+    ωₒ = apps_server_info_setting.ωₒ
 
-  K, α = power_info_setting.K, power_info_setting.α
-  x_mins, x_maxs =power_info_setting.γs, power_info_setting.Γs
+    K, α = power_info_setting.K, power_info_setting.α
+    x_mins, x_maxs =power_info_setting.γs, power_info_setting.Γs
 
-  m = Model(Ipopt.Optimizer)
-  set_optimizer_attribute(m, "tol", 1e-2)
-  set_optimizer_attribute(m, "check_derivatives_for_naninf", "yes")
-  set_optimizer_attribute(m, "start_with_resto", "yes")
-  set_optimizer_attribute(m, "resto_failure_feasibility_threshold", 10.0)
+    θ₀, θ₁, θ₂, θ₃ = θ
 
-  p_start = [1/length(feas_apps[i]) for i in 1:I]
-  println("p starts with : ", p_start)
-  x_start = [x_mins[j] + x_start_dif for j in 1:J]
-  println("x starts with : ", x_start)
+    m = Model(Ipopt.Optimizer)
+    set_optimizer_attribute(m, "tol", 1e-2)
+    set_optimizer_attribute(m, "check_derivatives_for_naninf", "yes")
+    set_optimizer_attribute(m, "start_with_resto", "yes")
+    set_optimizer_attribute(m, "resto_failure_feasibility_threshold", 10.0)
 
-  # p (variable) (implies Constraint B.1)
-  @variable(m, p[i in 1:I, j in feas_apps[i]] >= 0, start = p_start[i])
-  # Constraint B.2
-  @constraint(m, prob_sum[i = 1:I], sum(p[i,j] for j in feas_apps[i]) == 1)
-  
-  # x (variable) (implies Constraint B.3)
-  @variable(m, x[j = 1:J] >= x_mins[j], start = x_start[j])
+    p_start = [1/length(feas_apps[i]) for i in 1:I]
+    println("p starts with : ", p_start)
+    x_start = [x_mins[j] + x_start_dif for j in 1:J]
+    println("x starts with : ", x_start)
 
-  # λ (variable)
-  λ_start = [sum(λₒ[i]*p_start[i] for i in feas_servs[j]) for j in 1:J]
-  println("λ starts with ", λ_start)
-  @variable(m, λ[j = 1:J], start = λ_start[j])
-  # Constraint B.4
-  @constraint(m, λ_con[j = 1:J], λ[j] == sum(λₒ[i]*p[i, j] for i in feas_servs[j]))
+    # p (variable) (implies Constraint B.1)
+    @variable(m, p[i in 1:I, j in feas_apps[i]] >= 0, start = p_start[i])
+    # Constraint B.2
+    @constraint(m, prob_sum[i = 1:I], sum(p[i,j] for j in feas_apps[i]) == 1)
 
-  # σₐ (variable)
-  σₐ_start = [sqrt(sum(p_start[i]*SCOVₐₒ[i] + (1-p_start[i]) for i in feas_servs[j]))/(λ_start[j]) for j in 1:J]
-  println("σₐ starts with : ", σₐ_start)
-  @variable(m, σₐ[j = 1:J] >= 0, start = σₐ_start[j])
-  # Constraint B.5
-  @NLconstraint(m, σₐ_con[j = 1:J], (λ[j]*σₐ[j])^2 == sum(p[i,j]*SCOVₐₒ[i] + (1-p[i,j]) for i in feas_servs[j]))
+    # x (variable) (implies Constraint B.3)
+    @variable(m, x_maxs[j] >= x[j = 1:J] >= x_mins[j], start = x_start[j])
 
-  # 1/μ (variable)
-  μ_inv_start = [sum(μₒ_inv[i]*λₒ[i]*p_start[i] for i in feas_servs[j])/(x_start[j]*λ_start[j]) for j in 1:J]
-  println("1/μ starts with ", μ_inv_start)
-  @variable(m, μ_inv[j = 1:J], start = μ_inv_start[j])
-  # Constraint B.6
-  @NLconstraint(m, μ_inv_con[j = 1:J], μ_inv[j]*x[j]*λ[j] == sum(μₒ_inv[i]*λₒ[i]*p[i,j] for i in feas_servs[j]))
+    # λ (variable)
+    λ_start = [sum(λₒ[i]*p_start[i] for i in feas_servs[j]) for j in 1:J]
+    println("λ starts with ", λ_start)
+    @variable(m, λ[j = 1:J], start = λ_start[j])
+    # Constraint B.4
+    @constraint(m, λ_con[j = 1:J], λ[j] == sum(λₒ[i]*p[i, j] for i in feas_servs[j]))
 
-  # σₛ (variable)
-  σₛ_start = [(sqrt(sum(λₒ[i]*p_start[i]*(σₛₒ[i]^2 + (μₒ_inv[i]^2)) for i in feas_servs[j])/λ_start[j] - (sum(λₒ[i]*p_start[i]*μₒ_inv[i] for i in feas_servs[j])/λ_start[j])^2))/x_start[j] for j in 1:J]
-  println("σₛ starts with : ", σₛ_start)
-  @variable(m, σₛ[j = 1:J] >= 0, start = σₛ_start[j])
-  # Constraint B.7
-  @NLconstraint(m, σₛ_con[j = 1:J], (λ[j]*x[j]*σₛ[j])^2 == λ[j]*sum(λₒ[i]*p[i,j]*(σₛₒ[i]^2 + (μₒ_inv[i]^2)) for i in feas_servs[j]) - sum(λₒ[i]*p[i,j]*μₒ_inv[i] for i in feas_servs[j])^2 )
+    # σₐ (variable)
+    σₐ_start = [sqrt(sum(p_start[i]*SCOVₐₒ[i] + (1-p_start[i]) for i in feas_servs[j]))/(λ_start[j]) for j in 1:J]
+    println("σₐ starts with : ", σₐ_start)
+    @variable(m, σₐ[j = 1:J] >= 0, start = σₐ_start[j])
+    # Constraint B.5
+    @NLconstraint(m, σₐ_con[j = 1:J], (λ[j]*σₐ[j])^2 == sum(p[i,j]*SCOVₐₒ[i] + (1-p[i,j]) for i in feas_servs[j]))
 
-  # √(σₛ² + x²σₐ²) (variable)
-  sqrt_σₛ²_plus_σₐ²_start = [sqrt(σₛ_start[j]^2 + σₐ_start[j]^2) for j in 1:J]
-  println("√(σₛ²+σₐ²) starts with : ", sqrt_σₛ²_plus_σₐ²_start)
-  @variable(m, sqrt_σₛ²_plus_σₐ²[j = 1:J] >= 0, start = sqrt_σₛ²_plus_σₐ²_start[j])
-  @NLconstraint(m, sqrt_σₛ²_plus_σₐ²_con[j = 1:J], sqrt_σₛ²_plus_σₐ²[j]^2 == σₛ[j]^2 + σₐ[j]^2)
+    # 1/μ (variable)
+    μ_inv_start = [sum(μₒ_inv[i]*λₒ[i]*p_start[i] for i in feas_servs[j])/(x_start[j]*λ_start[j]) for j in 1:J]
+    println("1/μ starts with ", μ_inv_start)
+    @variable(m, μ_inv[j = 1:J], start = μ_inv_start[j])
+    # Constraint B.6
+    @NLconstraint(m, μ_inv_con[j = 1:J], μ_inv[j]*x[j]*λ[j] == sum(μₒ_inv[i]*λₒ[i]*p[i,j] for i in feas_servs[j]))
 
-  # Φₐₚₚᵣₒₓ (user-defined function)
-  function Φ(x)
-      sgn = tanh(100000*x)
-      ind = (sgn+1)/2
-      #println("x has sign : ", sgn)
-      #println("so ind : ", ind)
-      abs_x = sgn*x
-      nom = exp(-abs_x^2 / 2)
-      denom = 0.226 + 0.64*abs_x + 0.33*sqrt(abs_x^2 + 3)
-      tail_prob = (nom/denom) * (1/sqrt(2*pi))
-      #return 1 - tail_prob
-      return ind*(1-tail_prob) + (1-ind)*tail_prob
-  end
+    # σₛ (variable)
+    σₛ_start = [(sqrt(sum(λₒ[i]*p_start[i]*(σₛₒ[i]^2 + (μₒ_inv[i]^2)) for i in feas_servs[j])/λ_start[j] - (sum(λₒ[i]*p_start[i]*μₒ_inv[i] for i in feas_servs[j])/λ_start[j])^2))/x_start[j] for j in 1:J]
+    println("σₛ starts with : ", σₛ_start)
+    @variable(m, σₛ[j = 1:J] >= 0, start = σₛ_start[j])
+    # Constraint B.7
+    @NLconstraint(m, σₛ_con[j = 1:J], (λ[j]*x[j]*σₛ[j])^2 == λ[j]*sum(λₒ[i]*p[i,j]*(σₛₒ[i]^2 + (μₒ_inv[i]^2)) for i in feas_servs[j]) - sum(λₒ[i]*p[i,j]*μₒ_inv[i] for i in feas_servs[j])^2 )
 
-  register(m, :Φ, 1, Φ; autodiff = true)
+    # y (variable)
+    y_val_start = [θ₀ + θ₁*(σₛ_start[j]^2)/(λ_start[j]*μ_inv_start[j]) + θ₂*(λ_start[j]*μ_inv_start[j])*(σₐ_start[j]^2) + θ₃*(1-(λ_start[j]*μ_inv_start[j]))*(2-(λ_start[j]*μ_inv_start[j]))/(λ_start[j]^2) for j in 1:J]
+    println("y starts with ", y_val_start)
+    @variable(m, y_val[j = 1:J], start = y_val_start[j])
+    @NLconstraint(m, y_con[j = 1:J], (λ[j]^2)*λ[j]*μ_inv[j]*y_val[j] == (λ[j]^2)*λ[j]*μ_inv[j]*θ₀ + θ₁*(λ[j]^2)*(σₛ[j]^2) + θ₂*(λ[j]^2)*(λ[j]*μ_inv[j]*σₐ[j])^2 + θ₃*2*λ[j]*μ_inv[j]*(1- λ[j]*μ_inv[j])*(2- λ[j]*μ_inv[j]))
 
-  # Pᴮᴸ (variable)
-  @variable(m, P_L[n = 1:N, j = 1:J])
-  # Constraint B.9
-  @NLconstraint(m, P_L_con[j = 1:J], P_L[1, j] == Φ((1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]))
-  # Constraint B.10
-  @NLconstraint(m, P_L_con2[n = 2:N, j = 1:J], P_L[n, j] == Φ(sqrt(n)*(1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]) - Φ(sqrt(n-1)*(1/λ[j] - μ_inv[j])/sqrt_σₛ²_plus_σₐ²[j]))
+    # S_quantile (variable)
+    S_quantile_start = [y_val_start[j]*λ_start[j]/(2*(1-(λ_start[j]*μ_inv_start[j]))) + (2-(λ_start[j]*μ_inv_start[j]))/λ_start[j] for j in 1:10]
+    println("S Quantile starts with ", S_quantile_start)
+    @variable(m, S_quantile[j = 1:J], start = S_quantile_start[j])
+    @NLconstraint(m, S_quantile_con[j=1:J], 2*λ[j]*(1-λ[j]*μ_inv[j])*S_quantile[j] == (λ[j]^2)*y_val[j] + 2*(1-λ[j]*μ_inv[j])*(2-λ[j]*μ_inv[j]))
 
-  # γ^qₐ, γ^qₛ (variable)
-  @variable(m, γ_uc_q_a[j = 1:J])
-  @variable(m, γ_uc_q_s[j = 1:J])
-  # Constraint B.12
-  @NLconstraint(m, γ_uc_q_con[j = 1:J], (γ_uc_q_a[j]*σₐ[j] + γ_uc_q_s[j]*σₛ[j])^2 == 2*(1/λ[j] - μ_inv[j])*(δ - 2/λ[j] + μ_inv[j]))
+    println("ρ starts with ", [λ_start[j]*μ_inv_start[j] for j in 1:10])
 
-  # q (variable)
-  @variable(m, q[j = 1:J])
-  # Constraint B.11
-  @NLconstraint(m, q_con[j = 1:J], Φ(γ_uc_q_a[j])*Φ(γ_uc_q_s[j]) == 1 - q[j])
+    @NLconstraint(m, ρ_con[j=1:J], λ[j]*μ_inv[j] <= 1)
+    @NLconstraint(m, QoS_con[j=1:J], S_quantile[j] <= δ)
 
-  # γʳₐ, γʳₛ (variable)
-  @variable(m, γ_uc_r_a[n = 1:N, k = 1:n, j = 1:J])
-  @variable(m, γ_uc_r_s[n = 1:N, k = 1:n, j = 1:J])
-  # Constraint B.14
-  @NLconstraint(m, γ_uc_r_con[n = 1:N, k = 1:n, j = 1:J], n*μ_inv[j] - (k-1)/λ[j] + γ_uc_r_s[n,k,j]*σₛ[j]*sqrt(n) + γ_uc_r_a[n,k,j]*σₐ[j]*sqrt(k-1) == δ)
+    ##############################
+    # Objective
+    @NLobjective(m, Min, sum(λ[j]*μ_inv[j]*α[j]*(x[j]^3 - x_mins[j]^3) + K[j] + α[j]*(x_mins[j]^3) for j in 1:J))
 
-  # r (variable)
-  @variable(m, r[n = 1:N, k = 1:n, j = 1:J])
-  # Constraint B.13
-  @NLconstraint(m, r_con[n = 1:N, k = 1:n, j = 1:J], Φ(γ_uc_r_a[n, k, j])*Φ(γ_uc_r_s[n, k, j]) == 1 - r[n, k, j])
+    JuMP.optimize!(m)
+    objective_value = JuMP.objective_value(m) 
+    routing_prob = JuMP.value.(p)
+    ro_server_speeds = JuMP.value.(x)
 
-  # Constraint B.8
-  @NLconstraint(m, QoS[j = 1:J], sum((P_L[n, j]/n) * sum(r[n, k, j] for k in 1:n) for n in 1:N) + q[j]*(1-sum(P_L[n, j] for n in 1:N)) <= ϵ)
+    println("Objective Value : ", objective_value)
 
-  # Objective
-  @NLobjective(m, Min, sum(λ[j]*μ_inv[j]*α[j]*(x[j]^3 - x_mins[j]^3) + K[j] + α[j]*(x_mins[j]^3) for j in 1:J))
+    println("x : ", JuMP.value.(x))
+    println("P : ", JuMP.value.(p))
+    println("y : ", JuMP.value.(y_val))
+    println("S Quantile : ", JuMP.value.(S_quantile))
+    println("λ : ", JuMP.value.(λ))
+    println("1/μ : ", JuMP.value.(μ_inv))
+    println("σₐ : ", JuMP.value.(σₐ))
+    println("σₛ : ", JuMP.value.(σₛ))
+    println("SCOV_a : ", [(JuMP.value.(σₐ)[i]*JuMP.value.(λ)[i])^2 for i in 1:10])
+    println("SCOV_s : ", [(JuMP.value.(σₛ)[i]/JuMP.value.(μ_inv)[i])^2 for i in 1:10])
+    println("ρ : ", [JuMP.value.(λ)[i]*JuMP.value.(μ_inv)[i] for i in 1:10])
 
-  JuMP.optimize!(m)
-  objective_value = JuMP.objective_value(m) 
-  routing_prob = JuMP.value.(p)
-  ro_server_speeds = JuMP.value.(x)
-
-  println("Objective Value : ", objective_value)
-
-  println("x : ", JuMP.value.(x))
-  println("P : ", JuMP.value.(p))
-
-  return routing_prob, ro_server_speeds
+    return routing_prob, ro_server_speeds
 end
 
 #################Running a Simulation ###########################
 
 #Execute simulation with dynamic control policy
-function calculate_dynamic_results(threshold, quantile_percentage, apps_server_info_setting, power_info_setting)
+function calculate_dynamic_results(threshold, quantile_percentage, apps_server_info_setting, power_info_setting, bool_write_txt = false)
   λₒ, SCOVₐₒ, μₒ_inv, SCOVₛₒ, ωₒ, feas_servs, inter_arrival_distributions, workload_distributions = apps_server_info_setting.λₒ, apps_server_info_setting.SCOVₐₒ, apps_server_info_setting.μₒ_inv, apps_server_info_setting.SCOVₛₒ, apps_server_info_setting.ωₒ, apps_server_info_setting.feas_servs, apps_server_info_setting.inter_arrival_distributions, apps_server_info_setting.workload_distributions
   K, α, γs, Γs = power_info_setting.K, power_info_setting.α, power_info_setting.γs, power_info_setting.Γs
 
@@ -803,7 +797,7 @@ function calculate_dynamic_results(threshold, quantile_percentage, apps_server_i
   AI = arrival_generator(WS,REPLICATION_TIME)
   vdc = VirtualDataCenter(WS, AI, SS, WARM_UP_ARRIVALS, MAX_ARRIVALS, WARM_UP_TIME, REPLICATION_TIME, REGULAR_UPDATE_INTERVAL, S)
   PI = Plot_Information(S,file_sim_record,file_summarization)
-  run_to_end_dynamic(vdc, PI, REPLICATION_TIME, WARM_UP_TIME)
+  run_to_end_dynamic(vdc, PI, REPLICATION_TIME, WARM_UP_TIME, bool_write_txt)
 
   # Write summarization
   println(file_summarization, "Total Cumulative Power Consumption: $(vdc.total_cumulative_power_consumption)")
@@ -837,7 +831,7 @@ function calculate_dynamic_results(threshold, quantile_percentage, apps_server_i
 end
 
 #Execute simulation with static policy
-function calculate_static_results(threshold, quantile_percentage, routing_prob, ro_server_speeds, apps_server_info_setting, power_info_setting)
+function calculate_static_results(threshold, quantile_percentage, routing_prob, ro_server_speeds, apps_server_info_setting, power_info_setting, bool_write_txt = false)
   λₒ, SCOVₐₒ, μₒ_inv, SCOVₛₒ, ωₒ, feas_servs, feas_apps, inter_arrival_distributions, workload_distributions = apps_server_info_setting.λₒ, apps_server_info_setting.SCOVₐₒ, apps_server_info_setting.μₒ_inv, apps_server_info_setting.SCOVₛₒ, apps_server_info_setting.ωₒ, apps_server_info_setting.feas_servs, apps_server_info_setting.feas_apps, apps_server_info_setting.inter_arrival_distributions, apps_server_info_setting.workload_distributions
   K, α, γs, Γs = power_info_setting.K, power_info_setting.α, power_info_setting.γs, power_info_setting.Γs
 
@@ -849,7 +843,7 @@ function calculate_static_results(threshold, quantile_percentage, routing_prob, 
   AI = arrival_generator(WS,REPLICATION_TIME)
   vdc = VirtualDataCenter(WS, AI, SS, WARM_UP_ARRIVALS, MAX_ARRIVALS, WARM_UP_TIME, REPLICATION_TIME, REGULAR_UPDATE_INTERVAL, S)
   PI = Plot_Information(S,file_sim_record,file_summarization)
-  run_to_end_static(vdc, PI, REPLICATION_TIME, WARM_UP_TIME, routing_prob, ro_server_speeds, feas_apps)
+  run_to_end_static(vdc, PI, REPLICATION_TIME, WARM_UP_TIME, routing_prob, ro_server_speeds, feas_apps, bool_write_txt)
 
   println(file_summarization, "Total Cumulative Power Consumption: $(vdc.total_cumulative_power_consumption)")
   println(file_summarization, " ")
