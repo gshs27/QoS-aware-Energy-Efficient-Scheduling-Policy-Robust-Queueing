@@ -6,6 +6,7 @@ Main.jl includes the
 2. Simaulting data center operation, with static and dynamic control
 
 Functions.jl and Types.jl includes the necessary materials for Main.jl
+
 Additional Functions.jl includes possibly needed materials for fitting variability parameter coefficients by Quantile Regression
 
 Authors: Seung Min Baik $^a$ and Young Myoung Ko $^a$
