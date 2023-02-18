@@ -3,7 +3,7 @@ Julia Codes for Paper 'A QoS-aware energy-efficient scheduling policy for server
 
 Main.jl includes the 
 1. Calculting "Static Control Policy"; server speeds and routing probabilities
-2. Simulting data center operation, with static and dynamic control
+2. Simulating data center operation with static and dynamic controls
 
 Functions.jl and Types.jl includes the necessary materials for Main.jl
 
