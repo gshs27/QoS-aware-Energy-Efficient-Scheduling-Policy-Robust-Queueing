@@ -11,4 +11,4 @@ Additional Functions.jl includes possibly needed materials for fitting variabili
 
 Authors: Seung Min Baik $^a$ and Young Myoung Ko $^a$
 
-Affiliation : $^a$ Department of Industrial and Management Engineering, Pohang University of Science\\ and Technology, Pohang, Gyeongbuk, South Korea
+Affiliation : $^a$ Department of Industrial and Management Engineering, Pohang University of Science and Technology, Pohang, Gyeongbuk, South Korea
